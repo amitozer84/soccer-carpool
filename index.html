@@ -270,16 +270,18 @@ var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
     var host = $("days");
     host.textContent = "";
     var end = Math.min(ALL.length, firstUpcoming + shown);
+    var nextIso = null;
+    for (var j = firstUpcoming; j < ALL.length; j++) { if (!(rides[iso(ALL[j])] || {}).off) { nextIso = iso(ALL[j]); break; } }
     for (var i = firstUpcoming; i < end; i++) {
       var dt = ALL[i], id = iso(dt), r = rides[id] || {};
       var card = document.createElement("div");
-      card.className = "day" + (id === todayIso ? " today" : "") + (r.off ? " off" : "");
+      card.className = "day" + (id === nextIso ? " today" : "") + (r.off ? " off" : "");
       card.innerHTML =
         '<div class="when"><div class="dow"></div><div class="d"></div></div>' +
         '<button class="menu-btn" type="button">More</button>' +
         '<div class="offnote">No practice this day</div>' +
         '<div class="rides"></div>';
-      card.querySelector(".dow").textContent = dow(dt) + (id === todayIso ? " · today" : "");
+      card.querySelector(".dow").textContent = dow(dt) + (id === todayIso ? " · today" : (id === nextIso ? " · next practice" : ""));
       card.querySelector(".d").textContent = fmtShort(dt);
       var menu = card.querySelector(".menu-btn");
       menu.disabled = !canWrite;
