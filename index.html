@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f2fd1">
+<meta name="apple-mobile-web-app-title" content="Carpool">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Soccer Carpool 2026-2027</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@500;700;800&display=swap">
+<style>
+  /* Layout: one column phone-first board. Big "next practice" card up top, then the list of practice days,
+     Family colors are the scanning device: a parent finds their color, not their name. */
+  :root {
+    --bg: #d9e9fb;
+    --card: #ffffff;
+    --fg: #12172b;
+    --muted: #5c637a;
+    --line: #b9cfe8;
+    --pitch: #1f2fd1;
+    --sky: #2f8bff;
+    --sky-soft: #cfe4ff;
+    --bg2: #b7d6fa;
+    --pitch-ink: #ffffff;
+    --pitch-soft: #e0e4fb;
+    --empty: #e8f1fc;
+    --warn: #b8560d;
+    --warn-soft: #fbeadb;
+    --fam-ozer: #14954a;
+    --fam-bradford: #d6461d;
+    --fam-simmons: #8b3fc2;
+    --fam-hogan: #d99a10;
+    --shadow: 0 6px 20px rgba(18, 23, 43, .14);
+    --slot-bg: rgba(255,255,255,.16);
+    --display: "Bebas Neue", "Arial Narrow", Impact, sans-serif;
+    --body: "Nunito", "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e1120; --card: #181c30; --fg: #eef0f7; --muted: #a0a7c2; --line: #2d3350;
+      --pitch: #5d6dff; --pitch-ink: #ffffff; --pitch-soft: #23295a; --empty: #20253d; --sky: #6fb1ff; --sky-soft: #1c2f4d; --bg2: #101a33;
+      --warn: #f0a15a; --warn-soft: #3a2712;
+      --fam-ozer: #4fcf7f; --fam-bradford: #ff8a66; --fam-simmons: #c48cf0; --fam-hogan: #f2c04a;
+      --shadow: 0 6px 20px rgba(0,0,0,.35);
+      --slot-bg: rgba(0,0,0,.18);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e1120; --card: #181c30; --fg: #eef0f7; --muted: #a0a7c2; --line: #2d3350;
+    --pitch: #5d6dff; --pitch-ink: #ffffff; --pitch-soft: #23295a; --empty: #20253d; --sky: #6fb1ff; --sky-soft: #1c2f4d; --bg2: #101a33;
+    --warn: #f0a15a; --warn-soft: #3a2712;
+    --fam-ozer: #4fcf7f; --fam-bradford: #ff8a66; --fam-simmons: #c48cf0; --fam-hogan: #f2c04a;
+    --shadow: 0 6px 20px rgba(0,0,0,.35);
+    --slot-bg: rgba(0,0,0,.18);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--bg); background-image: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%); background-attachment: fixed; color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.45; margin: 0; }
+  .wrap { max-width: 560px; margin: 0 auto; padding-block: 20px 48px; padding-inline: 16px; display: grid; gap: 20px; }
+
+  header { display: grid; justify-items: center; text-align: center; gap: 8px; padding-top: 4px; }
+  .crest { width: 104px; height: 104px; border-radius: 22px; background: #fff; border: 3px solid #fff; padding: 4px; object-fit: contain; box-shadow: 0 8px 24px rgba(31, 47, 209, .22); }
+  h1 { font-family: var(--display); font-size: clamp(38px, 11vw, 60px); line-height: .95; margin: 4px 0 0; letter-spacing: 1px; color: var(--pitch); }
+  .season-pill { display: inline-block; background: var(--pitch); background-image: linear-gradient(90deg, var(--pitch), var(--sky)); color: #fff; font-family: var(--display); font-size: 22px; letter-spacing: 1.5px; padding: 4px 16px 3px; border-radius: 999px; box-shadow: 0 4px 12px rgba(31, 47, 209, .25); }
+  .nowrap { white-space: nowrap; }
+  .sub { color: var(--pitch); font-weight: 800; margin: 0; }
+
+  .banner { display: none; background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 10px 14px; font-weight: 700; font-size: 14px; }
+  .banner.show { display: block; }
+
+  /* next practice hero */
+  .next { background: var(--pitch); background-image: linear-gradient(135deg, var(--pitch) 0%, var(--sky) 100%); color: var(--pitch-ink); border-radius: 18px; padding: 18px 18px 16px; box-shadow: var(--shadow); display: grid; gap: 12px; }
+  .next .eyebrow { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; opacity: .85; }
+  .next .date { font-family: var(--display); font-size: 40px; line-height: 1; }
+  .next .slots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .next .slot { background: var(--slot-bg); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+  .next .slot .lbl { font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; opacity: .8; }
+  .next .slot .who { font-size: 22px; font-weight: 800; overflow-wrap: anywhere; }
+  .next .slot .who.none { opacity: .7; font-weight: 700; font-size: 18px; }
+  .next.off { background: var(--card); color: var(--fg); border: 2px dashed var(--line); box-shadow: none; }
+
+  /* the list */
+  section { display: grid; gap: 10px; }
+  h2 { font-family: var(--display); font-size: 26px; margin: 0; letter-spacing: .5px; color: var(--pitch); }
+  .hint { color: var(--muted); font-size: 14px; margin: 0; }
+  .day { background: var(--card); border: 1px solid var(--line); border-top: 5px solid var(--sky); border-radius: 14px; padding: 12px 14px; display: grid; grid-template-columns: 1fr auto; gap: 10px 12px; align-items: center; }
+  .day.today { border-color: var(--pitch); border-top-color: var(--pitch); background-image: linear-gradient(180deg, var(--sky-soft), var(--card) 60%); box-shadow: 0 0 0 3px var(--pitch-soft); }
+  .day.off { opacity: .7; }
+  .day .when { display: grid; gap: 0; min-width: 0; }
+  .day .dow { font-size: 12px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--sky); }
+  .day .d { font-weight: 800; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .day .tag { font-size: 12px; font-weight: 800; color: var(--pitch); }
+  .day .rides { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .day.off .rides { display: none; }
+  .day .offnote { grid-column: 1 / -1; font-weight: 700; color: var(--muted); }
+  .day.off .offnote { display: block; }
+  .day .offnote { display: none; }
+
+  .pick { appearance: none; border: 0; font: inherit; font-weight: 800; border-radius: 10px; padding: 10px 12px; text-align: left; cursor: pointer;
+          display: grid; gap: 1px; min-width: 0; background: var(--empty); color: var(--fg); border-left: 5px solid var(--line); }
+  .pick .lbl { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  .pick .who { font-size: 16px; overflow-wrap: anywhere; }
+  .pick.none .who { color: var(--muted); font-weight: 700; }
+  .pick.none { background: var(--sky-soft); border-left-color: var(--sky); }
+  .pick[data-fam="ozer"] { border-left-color: var(--fam-ozer); background: color-mix(in srgb, var(--fam-ozer) 18%, var(--card)); }
+  .pick[data-fam="bradford"] { border-left-color: var(--fam-bradford); background: color-mix(in srgb, var(--fam-bradford) 18%, var(--card)); }
+  .pick[data-fam="simmons"] { border-left-color: var(--fam-simmons); background: color-mix(in srgb, var(--fam-simmons) 18%, var(--card)); }
+  .pick[data-fam="hogan"] { border-left-color: var(--fam-hogan); background: color-mix(in srgb, var(--fam-hogan) 22%, var(--card)); }
+  .pick .who { color: var(--pitch); }
+  .pick:focus-visible, .menu-btn:focus-visible, .opt:focus-visible, .ghost:focus-visible { outline: 3px solid var(--pitch); outline-offset: 2px; }
+  .pick:disabled { cursor: default; }
+  .pick.saving { opacity: .6; }
+
+  .menu-btn { appearance: none; border: 2px solid var(--sky); background: transparent; color: var(--sky); font: inherit; font-weight: 800; font-size: 13px; border-radius: 999px; padding: 6px 10px; cursor: pointer; }
+  .menu-btn:disabled { visibility: hidden; }
+
+  .pager { display: flex; gap: 8px; }
+  .pager .ghost { flex: 1; }
+  .ghost.less { background: var(--card); color: var(--sky); border: 2px solid var(--sky); }
+  .ghost { appearance: none; border: 0; background: var(--sky); color: #fff; font: inherit; font-weight: 800; border-radius: 12px; padding: 12px; cursor: pointer; }
+
+  .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .dot.ozer { background: var(--fam-ozer); } .dot.bradford { background: var(--fam-bradford); } .dot.simmons { background: var(--fam-simmons); } .dot.hogan { background: var(--fam-hogan); }
+
+  /* picker sheet */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: flex-end; justify-content: center; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 10; }
+  .overlay.show { display: flex; }
+  .sheet { background: var(--card); color: var(--fg); border-radius: 18px; padding: 16px; width: 100%; max-width: 480px; display: grid; gap: 10px; box-shadow: var(--shadow); }
+  .sheet h3 { margin: 0; font-family: var(--display); font-size: 24px; letter-spacing: .5px; color: var(--pitch); }
+  .sheet .for { color: var(--muted); font-weight: 700; font-size: 14px; margin: 0; }
+  .opts { display: grid; gap: 8px; }
+  .opt { appearance: none; border: 1px solid var(--line); background: var(--empty); color: var(--fg); font: inherit; font-weight: 800; font-size: 17px; border-radius: 12px; padding: 12px 14px; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 10px; }
+  .opt.selected { border-color: var(--pitch); background: var(--pitch-soft); }
+  .opt[data-fam="ozer"] { background: color-mix(in srgb, var(--fam-ozer) 18%, var(--card)); }
+  .opt[data-fam="bradford"] { background: color-mix(in srgb, var(--fam-bradford) 18%, var(--card)); }
+  .opt[data-fam="simmons"] { background: color-mix(in srgb, var(--fam-simmons) 18%, var(--card)); }
+  .opt[data-fam="hogan"] { background: color-mix(in srgb, var(--fam-hogan) 22%, var(--card)); }
+  .opt.quiet { color: var(--muted); font-weight: 700; background: transparent; }
+  .opt.danger { color: var(--warn); font-weight: 800; background: transparent; }
+
+  footer { color: var(--pitch); font-weight: 700; font-size: 13px; text-align: center; }
+
+
+  /* soccer balls */
+  .bg-balls { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .bb { position: absolute; opacity: .12; }
+  .b1 { width: 260px; height: 260px; right: -70px; top: 120px; animation: spin 60s linear infinite; }
+  .b2 { width: 180px; height: 180px; left: -60px; bottom: 140px; animation: spin 45s linear infinite reverse; }
+  .b3 { width: 120px; height: 120px; right: 30px; bottom: -30px; animation: spin 75s linear infinite; }
+  .wrap { position: relative; z-index: 1; }
+  .title-ball { width: .8em; height: .8em; display: inline-block; vertical-align: -.08em; margin-right: .1em; animation: bounce 1.6s ease-in-out 3; transform-origin: 50% 100%; }
+  .title-ball:hover { animation: spin 1s linear infinite; }
+  .mini-ball { width: 1em; height: 1em; vertical-align: -.15em; }
+  @keyframes bounce { 0%, 100% { transform: translateY(0); } 30% { transform: translateY(-14px) rotate(20deg); } 50% { transform: translateY(0) scaleX(1.08) scaleY(.92); } 70% { transform: translateY(-6px) rotate(-10deg); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .bb, .title-ball, .title-ball:hover { animation: none; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><clipPath id="ball-clip"><circle cx="50" cy="50" r="46"/></clipPath><symbol id="ball" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#fff" stroke="#111" stroke-width="4"/><g clip-path="url(#ball-clip)" fill="#111" stroke="#111" stroke-width="3" stroke-linejoin="round"><polygon points="50.0,34.0 65.2,45.1 59.4,62.9 40.6,62.9 34.8,45.1"/><polygon points="50.0,23.0 37.6,14.0 42.4,-0.5 57.6,-0.5 62.4,14.0"/><line x1="50.0" y1="34.0" x2="50.0" y2="23.0"/><polygon points="75.7,41.7 80.4,27.1 95.7,27.1 100.4,41.7 88.0,50.6"/><line x1="65.2" y1="45.1" x2="75.7" y2="41.7"/><polygon points="65.9,71.8 81.2,71.8 85.9,86.4 73.5,95.4 61.1,86.4"/><line x1="59.4" y1="62.9" x2="65.9" y2="71.8"/><polygon points="34.1,71.8 38.9,86.4 26.5,95.4 14.1,86.4 18.8,71.8"/><line x1="40.6" y1="62.9" x2="34.1" y2="71.8"/><polygon points="24.3,41.7 12.0,50.6 -0.4,41.7 4.3,27.1 19.6,27.1"/><line x1="34.8" y1="45.1" x2="24.3" y2="41.7"/></g><circle cx="50" cy="50" r="46" fill="none" stroke="#111" stroke-width="4"/></symbol></defs></svg>
+<div class="bg-balls" aria-hidden="true"><svg class="bb b1"><use href="#ball"/></svg><svg class="bb b2"><use href="#ball"/></svg><svg class="bb b3"><use href="#ball"/></svg></div>
+<div class="wrap">
+  <header>
+    <img class="crest" id="crest" src="tc-logo.jpg" alt="T&amp;C Premier SC crest" width="104" height="104">
+    <h1><svg class="title-ball" aria-hidden="true"><use href="#ball"/></svg> Soccer Carpool</h1>
+    <div class="season-pill">2026–2027 Season</div>
+    <p class="sub">T&amp;C Premier SC · <span class="nowrap">Mon &amp; Wed</span> · <span class="nowrap">6:30–8:00 PM</span></p>
+  </header>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="next" id="next">
+    <div class="eyebrow"><svg class="mini-ball" aria-hidden="true"><use href="#ball"/></svg> Next practice · 6:30–8:00 PM</div>
+    <div class="date" id="next-date">Loading…</div>
+    <div class="slots">
+      <div class="slot"><div class="lbl">There by 6:30</div><div class="who none" id="next-there">…</div></div>
+      <div class="slot"><div class="lbl">Pick up at 8:00</div><div class="who none" id="next-back">…</div></div>
+    </div>
+  </div>
+
+  <section>
+    <h2><svg class="mini-ball" aria-hidden="true"><use href="#ball"/></svg> Practice days</h2>
+    <p class="hint" id="hint">Tap a ride to pick who’s driving. Everyone sees the change right away.</p>
+    <div id="days" style="display:grid;gap:10px"></div>
+    <div class="pager">
+      <button class="ghost" id="more" type="button">Show more days</button>
+      <button class="ghost less" id="less" type="button">Show fewer days</button>
+    </div>
+  </section>
+
+
+  <footer>Made by Dani <svg class="mini-ball" aria-hidden="true"><use href="#ball"/></svg> T&amp;C Premier SC, since 1974</footer>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <h3 id="sheet-title">Who’s driving?</h3>
+    <p class="for" id="sheet-for"></p>
+    <div class="opts" id="opts"></div>
+  </div>
+</div>
+
+<script>
+// Supabase project settings (Project URL + anon public key). The anon key is public by design.
+var SUPABASE_URL = "";
+var SUPABASE_ANON_KEY = "";
+(function () {
+  var FAMILIES = [
+    { key: "ozer", name: "Ozer" },
+    { key: "bradford", name: "Bradford" },
+    { key: "simmons", name: "Simmons" },
+    { key: "hogan", name: "Hogan" }
+  ];
+  var PRACTICE_DOWS = [1, 3];            // Monday, Wednesday
+  var SEASON_START = new Date(2026, 8, 1);  // Sep 1 2026
+  var SEASON_END = new Date(2027, 5, 30);   // Jun 30 2027
+  var PAGE = 8;
+
+  var famByKey = {};
+  FAMILIES.forEach(function (f) { famByKey[f.key] = f; });
+
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function iso(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function today() { var t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); }
+  function fmtLong(d) { return d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" }); }
+  function fmtShort(d) { return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
+  function dow(d) { return d.toLocaleDateString(undefined, { weekday: "short" }); }
+
+  // every practice date in the season
+  var ALL = [];
+  for (var d = new Date(SEASON_START); d <= SEASON_END; d.setDate(d.getDate() + 1)) {
+    if (PRACTICE_DOWS.indexOf(d.getDay()) !== -1) ALL.push(new Date(d));
+  }
+
+  var rides = {};          // iso date -> {there, back, off}
+  var db = null, loaded = false, canWrite = true, shown = PAGE, saving = {};
+  var todayIso = iso(today());
+  var firstUpcoming = ALL.findIndex(function (d) { return iso(d) >= todayIso; });
+  if (firstUpcoming < 0) firstUpcoming = ALL.length;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  function nameOf(key) { return key && famByKey[key] ? famByKey[key].name : ""; }
+
+  function renderNext() {
+    var next = null;
+    for (var i = firstUpcoming; i < ALL.length; i++) {
+      var r = rides[iso(ALL[i])] || {};
+      if (!r.off) { next = ALL[i]; break; }
+    }
+    var box = $("next");
+    if (!next) { $("next-date").textContent = "Season’s over!"; return; }
+    var r2 = rides[iso(next)] || {};
+    $("next-date").textContent = (iso(next) === todayIso ? "Today · " : "") + fmtLong(next);
+    ["there", "back"].forEach(function (k) {
+      var el = $("next-" + k);
+      var n = nameOf(r2[k]);
+      el.textContent = loaded ? (n || "Open") : "…";
+      el.className = "who" + (n ? "" : " none");
+    });
+  }
+
+  function renderDays() {
+    var host = $("days");
+    host.textContent = "";
+    var end = Math.min(ALL.length, firstUpcoming + shown);
+    for (var i = firstUpcoming; i < end; i++) {
+      var dt = ALL[i], id = iso(dt), r = rides[id] || {};
+      var card = document.createElement("div");
+      card.className = "day" + (id === todayIso ? " today" : "") + (r.off ? " off" : "");
+      card.innerHTML =
+        '<div class="when"><div class="dow"></div><div class="d"></div></div>' +
+        '<button class="menu-btn" type="button">More</button>' +
+        '<div class="offnote">No practice this day</div>' +
+        '<div class="rides"></div>';
+      card.querySelector(".dow").textContent = dow(dt) + (id === todayIso ? " · today" : "");
+      card.querySelector(".d").textContent = fmtShort(dt);
+      var menu = card.querySelector(".menu-btn");
+      menu.disabled = !canWrite;
+      menu.textContent = r.off ? "Practice is on" : "No practice";
+      menu.addEventListener("click", (function (id, off) { return function () { save(id, { off: !off }); }; })(id, !!r.off));
+      var ridesEl = card.querySelector(".rides");
+      ["there", "back"].forEach(function (k) {
+        var b = document.createElement("button");
+        b.type = "button";
+        var n = nameOf(r[k]);
+        b.className = "pick" + (n ? "" : " none") + (saving[id + k] ? " saving" : "");
+        if (r[k]) b.setAttribute("data-fam", r[k]);
+        b.disabled = !canWrite || !loaded;
+        b.innerHTML = '<span class="lbl"></span><span class="who"></span>';
+        b.querySelector(".lbl").textContent = k === "there" ? "There · 6:30" : "Back · 8:00";
+        b.querySelector(".who").textContent = loaded ? (n || "Open") : "…";
+        b.addEventListener("click", (function (id, k, dt) { return function () { openPicker(id, k, dt); }; })(id, k, dt));
+        ridesEl.appendChild(b);
+      });
+      host.appendChild(card);
+    }
+    $("more").hidden = end >= ALL.length;
+    $("less").hidden = shown <= PAGE;
+  }
+
+  function renderAll() { renderNext(); renderDays(); }
+
+  // picker
+  var picking = null;
+  function openPicker(id, k, dt) {
+    picking = { id: id, k: k };
+    $("sheet-for").textContent = (k === "there" ? "Drive there at 6:30 · " : "Pick up at 8:00 · ") + fmtLong(dt);
+    var opts = $("opts"); opts.textContent = "";
+    var current = (rides[id] || {})[k] || "";
+    FAMILIES.forEach(function (f) {
+      var b = document.createElement("button"); b.type = "button";
+      b.className = "opt" + (current === f.key ? " selected" : "");
+      b.setAttribute("data-fam", f.key);
+      b.innerHTML = '<span class="dot ' + f.key + '"></span><span></span>';
+      b.querySelector("span:last-child").textContent = f.name;
+      b.addEventListener("click", function () { choose(f.key); });
+      opts.appendChild(b);
+    });
+    var none = document.createElement("button"); none.type = "button"; none.className = "opt quiet"; none.textContent = "Leave it open (clear)";
+    none.addEventListener("click", function () { choose(""); });
+    opts.appendChild(none);
+    var cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "opt quiet"; cancel.textContent = "Cancel";
+    cancel.addEventListener("click", closePicker);
+    opts.appendChild(cancel);
+    $("overlay").classList.add("show");
+  }
+  function closePicker() { picking = null; $("overlay").classList.remove("show"); }
+  function choose(key) {
+    if (!picking) return;
+    var patch = {}; patch[picking.k] = key;
+    var p = picking; closePicker();
+    save(p.id, patch);
+  }
+  $("overlay").addEventListener("click", function (e) { if (e.target === $("overlay")) closePicker(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closePicker(); });
+
+  function save(id, patch) {
+    if (!db) return;
+    var cur = rides[id] || { there: "", back: "", off: false };
+    var next = { there: cur.there || "", back: cur.back || "", off: !!cur.off };
+    Object.keys(patch).forEach(function (k) { next[k] = patch[k]; });
+    var mark = Object.keys(patch).map(function (k) { return id + k; });
+    mark.forEach(function (m) { saving[m] = true; });
+    rides[id] = next; renderAll();
+    db.from("rides").upsert({ day: id, there: next.there, back: next.back, off: next.off, updated_at: new Date().toISOString() })
+      .then(function (res) {
+        mark.forEach(function (m) { delete saving[m]; });
+        if (res.error) { showBanner("Couldn’t save that. Check your connection and try again."); refresh(); }
+        renderAll();
+      });
+  }
+
+  function showBanner(msg) { var b = $("banner"); b.textContent = msg; b.classList.add("show"); }
+
+  $("more").addEventListener("click", function () { shown += PAGE; renderDays(); });
+  $("less").addEventListener("click", function () {
+    shown = PAGE; renderDays();
+    var top = document.getElementById("days").getBoundingClientRect().top + window.pageYOffset - 12;
+    window.scrollTo({ top: top, behavior: "smooth" });
+  });
+
+  renderAll();
+
+  // shared storage (Supabase) — anyone with the link can read and pick
+  function rowToRide(r) { return { there: r.there || "", back: r.back || "", off: !!r.off }; }
+  function refresh() {
+    if (!db) return;
+    db.from("rides").select("day, there, back, off").then(function (res) {
+      if (res.error) { showBanner("Couldn’t load the schedule. Check your connection and reload."); return; }
+      var fresh = {};
+      res.data.forEach(function (r) { fresh[r.day] = rowToRide(r); });
+      Object.keys(saving).forEach(function (m) { var id = m.slice(0, 10); if (rides[id]) fresh[id] = rides[id]; });
+      rides = fresh; loaded = true; renderAll();
+    });
+  }
+  function start() {
+    if (!window.supabase || !SUPABASE_URL || !SUPABASE_ANON_KEY) { offline(); return; }
+    try { db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY); } catch (e) { offline(); return; }
+    refresh();
+    // live updates when another parent picks a day
+    db.channel("rides-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "rides" }, function (payload) {
+        var r = payload.new && payload.new.day ? payload.new : null;
+        if (r) { rides[r.day] = rowToRide(r); renderAll(); }
+      })
+      .subscribe();
+    // belt and braces: refetch when the app comes back to the front, and once a minute
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) refresh(); });
+    setInterval(refresh, 60000);
+  }
+  function offline() {
+    loaded = true; canWrite = false;
+    showBanner("The schedule isn’t connected yet. Ask Amit to finish the setup.");
+    renderAll();
+  }
+  start();
+})();
+</script>
+
+</body>
+</html>
